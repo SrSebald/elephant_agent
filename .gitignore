@@ -1,0 +1,13 @@
+.env
+.env.local
+.env.*
+!.env.example
+!.env.local.example
+__pycache__/
+.pytest_cache/
+*.pyc
+*.pyo
+*.pyd
+backend/data/
+frontend/.next/
+frontend/node_modules/
