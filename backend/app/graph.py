@@ -92,12 +92,17 @@ def build_ticket_graph(
     async def execute(state: TicketState) -> dict:
         analysis = TicketAnalysis.model_validate(state["analysis"] or {})
         relevant_files = [RelevantFile.model_validate(item) for item in state["relevant_files"]]
+        _, _, effective_team_name = linear_service.resolve_team_destination(analysis.assigned_team)
 
         issue_markdown = _build_linear_issue_body(
+            trace_id=state["trace_id"],
+            reporter_email=state["reporter_email"],
             report_text=state["report_text"],
             file_content=state["file_content"],
+            attachments=state["attachments"],
             analysis=analysis,
             relevant_files=relevant_files,
+            linear_team_name=effective_team_name,
         )
 
         try:
@@ -211,45 +216,83 @@ def build_ticket_graph(
 
 
 def _build_linear_issue_body(
+    trace_id: str,
+    reporter_email: str | None,
     report_text: str,
     file_content: str,
+    attachments: list[dict],
     analysis: TicketAnalysis,
     relevant_files: list[RelevantFile],
+    linear_team_name: str | None,
 ) -> str:
     file_lines = []
-    for item in relevant_files:
-        line = f"- `{item.repository}/{item.path}`"
+    for item in relevant_files[:5]:
         if item.url:
-            line += f" ({item.url})"
+            line = f"- [`{item.repository}/{item.path}`]({item.url})"
+        else:
+            line = f"- `{item.repository}/{item.path}`"
+        if item.score:
+            line += f" - relevance {item.score:.2f}"
         file_lines.append(line)
 
     relevant_files_markdown = "\n".join(file_lines) if file_lines else "- No Solidus code matches were found."
     attachment_excerpt = file_content[:1200].strip() or "No text attachment provided."
     next_steps = "\n".join(f"- {step}" for step in analysis.next_steps) or "- Validate the diagnosis."
+    guardrail_notes = "\n".join(f"- {note}" for note in analysis.guardrail_notes) or "- No guardrail escalations."
+    reporter_context = report_text.strip() or "No reporter description provided."
+    resolved_linear_team = linear_team_name or "Unspecified Linear team"
+
+    attachment_lines = []
+    for raw_attachment in attachments[:4]:
+        attachment = AttachmentArtifact.model_validate(raw_attachment)
+        line = (
+            f"- `{attachment.filename}` ({attachment.kind}, {attachment.mime_type}, "
+            f"{attachment.size_bytes} bytes)"
+        )
+        if attachment.text_excerpt:
+            excerpt = attachment.text_excerpt.strip().replace("\n", " ")
+            line += f" - excerpt: {excerpt[:220]}"
+        if attachment.prompt_injection_signals:
+            signals = ", ".join(attachment.prompt_injection_signals[:3])
+            line += f" - safety signals: {signals}"
+        attachment_lines.append(line)
+
+    attachments_markdown = "\n".join(attachment_lines) if attachment_lines else "- No attachments were provided."
 
     return "\n".join(
         [
             f"# {analysis.summary}",
             "",
-            f"**Category:** {analysis.category}",
-            f"**Assigned team:** {analysis.assigned_team}",
-            f"**Priority:** {analysis.priority}",
-            f"**Solidus area:** {analysis.solidus_area}",
+            "## Intake Snapshot",
+            f"- Trace ID: `{trace_id}`",
+            f"- Reporter: `{reporter_email or 'not_provided'}`",
+            f"- Linear team: {resolved_linear_team}",
+            f"- Agent route: `{analysis.assigned_team}`",
+            f"- Category: `{analysis.category}`",
+            f"- Priority: `{analysis.priority}`",
+            f"- Solidus area: `{analysis.solidus_area}`",
+            f"- Confidence: `{analysis.confidence:.2f}`",
             "",
             "## Reporter Context",
-            report_text.strip(),
+            reporter_context,
             "",
-            "## Diagnosis",
+            "## Agent Diagnosis",
             analysis.diagnosis,
             "",
-            "## Resolution Path",
+            "## Suggested Resolution Path",
             analysis.resolution_path,
             "",
             "## Suggested Next Steps",
             next_steps,
             "",
+            "## Safety Notes",
+            guardrail_notes,
+            "",
             "## Relevant Solidus Files",
             relevant_files_markdown,
+            "",
+            "## Attachments",
+            attachments_markdown,
             "",
             "## Attachment Excerpt",
             attachment_excerpt,
