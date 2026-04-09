@@ -1,0 +1,11 @@
+.git
+.gitignore
+backend/data
+backend/*.egg-info
+backend/__pycache__
+backend/app/**/__pycache__
+frontend/.next
+frontend/node_modules
+**/*.pyc
+**/.DS_Store
+scripts

@@ -26,17 +26,34 @@ class EmailService:
         analysis: TicketAnalysis,
         linear_url: str | None,
     ) -> EmailResult:
-        if not self.settings.resend_api_key or not to_email:
+        subject = f"New Solidus ticket routed: {ticket_title}"
+        html = self._build_ticket_html(ticket_title=ticket_title, analysis=analysis, linear_url=linear_url)
+        return await self._send_email(to_email=to_email, subject=subject, html=html)
+
+    async def send_resolution_notification(
+        self,
+        *,
+        to_email: str,
+        ticket_title: str,
+        resolution_note: str,
+    ) -> EmailResult:
+        subject = f"Resolved: {ticket_title}"
+        html = f"""
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+          <h2>Resolved: {escape(ticket_title)}</h2>
+          <p>{escape(resolution_note)}</p>
+        </div>
+        """
+        return await self._send_email(to_email=to_email, subject=subject, html=html)
+
+    async def _send_email(self, *, to_email: str, subject: str, html: str) -> EmailResult:
+        if not to_email:
+            return EmailResult(sent=False, dry_run=True)
+
+        if not self.settings.resend_api_key:
             if self.settings.allow_dry_run:
                 return EmailResult(sent=True, dry_run=True)
-            raise RuntimeError("Resend is not configured. Set RESEND_API_KEY and target emails.")
-
-        payload = {
-            "from": self.settings.resend_from_email,
-            "to": [to_email],
-            "subject": f"New ticket routed: {ticket_title}",
-            "html": self._build_html(ticket_title=ticket_title, analysis=analysis, linear_url=linear_url),
-        }
+            raise RuntimeError("Resend is not configured. Set RESEND_API_KEY.")
 
         async with httpx.AsyncClient(timeout=20.0) as client:
             response = await client.post(
@@ -45,13 +62,18 @@ class EmailService:
                     "Authorization": f"Bearer {self.settings.resend_api_key}",
                     "Content-Type": "application/json",
                 },
-                json=payload,
+                json={
+                    "from": self.settings.resend_from_email,
+                    "to": [to_email],
+                    "subject": subject,
+                    "html": html,
+                },
             )
             response.raise_for_status()
 
         return EmailResult(sent=True, message_id=response.json().get("id"))
 
-    def _build_html(self, *, ticket_title: str, analysis: TicketAnalysis, linear_url: str | None) -> str:
+    def _build_ticket_html(self, *, ticket_title: str, analysis: TicketAnalysis, linear_url: str | None) -> str:
         next_steps = "".join(f"<li>{escape(step)}</li>" for step in analysis.next_steps) or "<li>Validate the diagnosis.</li>"
         link = (
             f'<p><a href="{escape(linear_url)}">Open Linear issue</a></p>'
@@ -63,6 +85,7 @@ class EmailService:
           <h2>{escape(ticket_title)}</h2>
           <p><strong>Team:</strong> {escape(analysis.assigned_team.title())}</p>
           <p><strong>Priority:</strong> {escape(analysis.priority.title())}</p>
+          <p><strong>Solidus area:</strong> {escape(analysis.solidus_area)}</p>
           <p><strong>Diagnosis:</strong> {escape(analysis.diagnosis)}</p>
           <h3>Resolution Path</h3>
           <p>{escape(analysis.resolution_path)}</p>

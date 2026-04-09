@@ -12,6 +12,8 @@ backend/data/
 backend/*.egg-info/
 backend/uvicorn-test.log
 backend/uvicorn-test.err.log
+backend/uvicorn-submission.log
+backend/uvicorn-submission.err.log
 frontend/.next/
 frontend/node_modules/
 scripts/sample-ticket.log

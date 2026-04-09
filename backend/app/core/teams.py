@@ -9,34 +9,38 @@ class TeamConfig:
     display_name: str
     linear_team_id: str | None
     email: str
+    communicator_channel: str
     repo_hints: tuple[str, ...]
     keywords: tuple[str, ...]
 
 
 def get_team_catalog(settings: Settings) -> dict[str, TeamConfig]:
     return {
-        "backend": TeamConfig(
-            slug="backend",
-            display_name="Backend",
-            linear_team_id=settings.linear_backend_team_id,
-            email=settings.backend_team_email,
-            repo_hints=("api", "services", "worker", "backend"),
-            keywords=("api", "database", "queue", "timeout", "500", "exception", "worker"),
+        "core": TeamConfig(
+            slug="core",
+            display_name="Solidus Core",
+            linear_team_id=settings.linear_core_team_id,
+            email=settings.core_team_email,
+            communicator_channel=settings.core_comm_channel,
+            repo_hints=("core", "solidus_core", "models", "mailers", "calculators", "promotions"),
+            keywords=("order", "checkout", "payment", "shipment", "promotion", "tax", "inventory"),
         ),
-        "frontend": TeamConfig(
-            slug="frontend",
-            display_name="Frontend",
-            linear_team_id=settings.linear_frontend_team_id,
-            email=settings.frontend_team_email,
-            repo_hints=("web", "app", "frontend", "ui"),
-            keywords=("ui", "browser", "page", "render", "react", "button", "frontend"),
+        "admin": TeamConfig(
+            slug="admin",
+            display_name="Solidus Admin",
+            linear_team_id=settings.linear_admin_team_id,
+            email=settings.admin_team_email,
+            communicator_channel=settings.admin_comm_channel,
+            repo_hints=("backend", "solidus_backend", "admin", "dashboard"),
+            keywords=("admin", "backend", "ui", "dashboard", "page", "form", "button"),
         ),
-        "infra": TeamConfig(
-            slug="infra",
-            display_name="Infra",
-            linear_team_id=settings.linear_infra_team_id,
-            email=settings.infra_team_email,
-            repo_hints=("infra", "deploy", "ops", "terraform"),
-            keywords=("deploy", "config", "dns", "kubernetes", "terraform", "docker", "infra"),
+        "api": TeamConfig(
+            slug="api",
+            display_name="Solidus API",
+            linear_team_id=settings.linear_api_team_id,
+            email=settings.api_team_email,
+            communicator_channel=settings.api_comm_channel,
+            repo_hints=("api", "solidus_api", "controllers", "serializers"),
+            keywords=("api", "endpoint", "json", "serializer", "controller", "token"),
         ),
     }

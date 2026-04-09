@@ -1,10 +1,20 @@
 import { TicketDashboard } from "@/components/ticket-dashboard";
-import { loadInitialTickets } from "@/lib/backend";
+import { loadInitialContext, loadInitialSummary, loadInitialTickets } from "@/lib/backend";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const initialTickets = await loadInitialTickets();
+  const [initialTickets, initialSummary, initialContext] = await Promise.all([
+    loadInitialTickets(),
+    loadInitialSummary(),
+    loadInitialContext(),
+  ]);
 
-  return <TicketDashboard initialTickets={initialTickets} />;
+  return (
+    <TicketDashboard
+      initialTickets={initialTickets}
+      initialSummary={initialSummary}
+      initialContext={initialContext}
+    />
+  );
 }
