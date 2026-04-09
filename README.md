@@ -69,6 +69,28 @@ Default local URLs:
 - Frontend: `http://localhost:3000`
 - Backend: `http://127.0.0.1:8000`
 
+## Quick local testing
+
+PowerShell:
+
+```powershell
+py -m pip install -e .\backend
+.\scripts\run-test-db.ps1
+```
+
+In another terminal:
+
+```powershell
+.\scripts\smoke-test-backend.ps1
+```
+
+Shell:
+
+```bash
+pip install -e ./backend
+sh scripts/run-test-db.sh
+```
+
 ## API
 
 - `GET /api/v1/tickets`

@@ -33,13 +33,18 @@ class Database:
     async def initialize(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         async with aiosqlite.connect(self.db_path) as connection:
-            await connection.execute(CREATE_TICKETS_TABLE)
-            await connection.commit()
+            await self._ensure_schema(connection)
 
     async def connect(self) -> aiosqlite.Connection:
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
         connection = await aiosqlite.connect(self.db_path)
         connection.row_factory = aiosqlite.Row
+        await self._ensure_schema(connection)
         return connection
+
+    async def _ensure_schema(self, connection: aiosqlite.Connection) -> None:
+        await connection.execute(CREATE_TICKETS_TABLE)
+        await connection.commit()
 
 
 database = Database()

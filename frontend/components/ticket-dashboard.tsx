@@ -6,7 +6,7 @@ import {
   startTransition,
   useDeferredValue,
   useEffect,
-  useEffectEvent,
+  useRef,
   useState,
   useTransition,
 } from "react";
@@ -44,8 +44,16 @@ export function TicketDashboard({ initialTickets }: TicketDashboardProps) {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isPending, startSubmitTransition] = useTransition();
+  const isActiveRef = useRef(true);
 
-  const refreshTickets = useEffectEvent(async () => {
+  useEffect(() => {
+    isActiveRef.current = true;
+    return () => {
+      isActiveRef.current = false;
+    };
+  }, []);
+
+  async function refreshTickets() {
     setIsRefreshing(true);
     try {
       const response = await fetch("/api/tickets", { cache: "no-store" });
@@ -59,6 +67,10 @@ export function TicketDashboard({ initialTickets }: TicketDashboardProps) {
       }
 
       const nextTickets = payload as Ticket[];
+      if (!isActiveRef.current) {
+        return;
+      }
+
       startTransition(() => {
         setTickets(nextTickets);
         setSelectedTicketId((current) => {
@@ -69,12 +81,18 @@ export function TicketDashboard({ initialTickets }: TicketDashboardProps) {
         });
       });
       setLastUpdated(new Date().toISOString());
+      setErrorMessage(null);
     } catch (error) {
+      if (!isActiveRef.current) {
+        return;
+      }
       setErrorMessage(getErrorMessage(error, "Unable to refresh tickets."));
     } finally {
-      setIsRefreshing(false);
+      if (isActiveRef.current) {
+        setIsRefreshing(false);
+      }
     }
-  });
+  }
 
   useEffect(() => {
     void refreshTickets();
@@ -82,7 +100,7 @@ export function TicketDashboard({ initialTickets }: TicketDashboardProps) {
       void refreshTickets();
     }, 10_000);
     return () => window.clearInterval(intervalId);
-  }, [refreshTickets]);
+  }, []);
 
   const selectedTicket =
     deferredTickets.find((ticket) => ticket.id === selectedTicketId) ?? deferredTickets[0] ?? null;

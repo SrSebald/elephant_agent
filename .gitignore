@@ -9,5 +9,9 @@ __pycache__/
 *.pyo
 *.pyd
 backend/data/
+backend/*.egg-info/
+backend/uvicorn-test.log
+backend/uvicorn-test.err.log
 frontend/.next/
 frontend/node_modules/
+scripts/sample-ticket.log
